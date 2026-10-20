@@ -141,6 +141,13 @@ h2{font-size:14px;color:var(--sub);margin:22px 4px 6px;font-weight:600}
 .alink{display:block;width:100%;text-align:left;background:none;border:none;padding:6px 0 0;font-size:14px;color:var(--text)}
 .alink u{color:var(--danger);text-decoration:none;font-weight:700}
 .sentan.alert{border-color:var(--danger);background:var(--danger-weak)}
+.ticon{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 4px;border-radius:6px;color:#fff;
+  font-size:11px;font-weight:700;line-height:1;margin-right:3px;vertical-align:-4px;flex:none}
+.ssum .ticon,.res .ticon{vertical-align:2px}
+.chip.tag{display:inline-flex;align-items:center;gap:4px;padding-left:6px}
+.chip.tag .ticon{margin:0}
+.chip.tag.on{background:var(--accent-weak);border-color:var(--accent);color:var(--accent);font-weight:700}
+.chip.tag:not(.on) .ticon{opacity:.45}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);
   background:rgba(30,30,30,.92);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:20;
   opacity:0;transition:opacity .2s;pointer-events:none}
@@ -160,6 +167,15 @@ const HALF = {
   pm: {label:'午後', start:'13:00', end:'16:00'},
 };
 const WD = '日月火水木金土';
+// 押すとアイコンで表示する治療内容ボタン（オン/オフ切り替え）
+const ICONS = {
+  sentan:{label:'先端', short:'先', bg:'#d64545'},
+  mente:{label:'メンテ', short:'メ', bg:'#1f9d55'},
+  sp:{label:'SP', short:'SP', bg:'#2f6fde'},
+  fl:{label:'フッ素', short:'F', bg:'#8e5bd6'},
+};
+const iconHtml = id => ICONS[id] ? `<span class="ticon" style="background:${ICONS[id].bg}" title="${ICONS[id].label}">${ICONS[id].short}</span>` : '';
+const tagsHtml = s => (s && s.tags || []).map(iconHtml).join('');
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -169,7 +185,7 @@ const parseYmd = s => { const [y, m, d] = s.split('-').map(Number); return new D
 const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
 const toTime = m => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
 const showTime = t => t.slice(0, 5).replace(/^0/, '');   // 枠キーは "09:00" または同時刻2人目以降 "09:00~2"
-const APP_VERSION = '1.9';
+const APP_VERSION = '2.0';
 // 先生名の表記ゆれ吸収：全角半角・大小文字・空白・「先生」「Dr.」などの付け足し・カタカナ/ひらがな
 function normDoc(n) {
   let s = String(n || '').normalize('NFKC').toLowerCase().replace(/\s/g, '');
@@ -210,7 +226,12 @@ function migrate(d) {
   d.version = 1;
   if (!d.days || typeof d.days !== 'object') d.days = {};
   if (!Array.isArray(d.doctors)) d.doctors = [];
-  if (!Array.isArray(d.presets)) d.presets = [{id:uid(), label:'先端'}, {id:uid(), label:'メンテ'}];
+  if (!Array.isArray(d.presets)) d.presets = [];
+  if (!d.settings || !d.settings.iconPresetsV1) {   // 先端・メンテ・SP・フッ素をアイコン付きボタンにする
+    d.presets = d.presets.filter(p => !Object.values(ICONS).some(ic => ic.label === p.label));
+    d.presets.unshift(...Object.entries(ICONS).map(([id, ic]) => ({id, label:ic.label, icon:true})));
+    d.settings = d.settings || {}; d.settings.iconPresetsV1 = true;
+  }
   if (!d.weekly || typeof d.weekly !== 'object') d.weekly = {};
   if (!d.sync || typeof d.sync !== 'object') d.sync = {};
   if (!d.settings) d.settings = {};
@@ -230,7 +251,7 @@ function load() {
 }
 let db = load();
 
-const slotEmpty = s => !s || !(s.patient || s.treatment || s.unit || s.memo);
+const slotEmpty = s => !s || !(s.patient || s.treatment || s.unit || s.memo || (s.tags && s.tags.length));
 const keepSlot = s => s && (s.extra || !slotEmpty(s));   // ＋で追加した枠は空でも残す
 const halfEmpty = h => !h || !(h.doctor || h.sentan || h.memo || Object.values(h.slots || {}).some(keepSlot));
 function prune() {
@@ -276,7 +297,7 @@ function times(date, h) {
   if (half) for (const [t, s] of Object.entries(half.slots)) if (keepSlot(s)) set.add(t);
   return [...set].sort();
 }
-const patientCount = half => half ? Object.values(half.slots).filter(s => s.patient || s.treatment).length : 0;
+const patientCount = half => half ? Object.values(half.slots).filter(s => s.patient || s.treatment || (s.tags && s.tags.length)).length : 0;
 const liveDoctors = () => db.doctors.filter(d => d.name && !d.deleted);
 // 先端オーダーがある先生か（リストにない名前・空欄はチェックを出す）
 const hasOrder = name => { const d = findDoctor(name); return !d || d.order !== false; };
@@ -427,8 +448,11 @@ function viewCal() {
   </div>`;
 }
 
-function presetChips(doctorName) {
-  let html = db.presets.map(p => `<button class="chip" data-preset="${esc(p.label)}">${esc(p.label)}</button>`).join('');
+function presetChips(doctorName, slot) {
+  const tags = (slot && slot.tags) || [];
+  let html = db.presets.map(p => p.icon
+    ? `<button class="chip tag ${tags.includes(p.id) ? 'on' : ''}" data-tag="${p.id}">${iconHtml(p.id)}${esc(p.label)}</button>`
+    : `<button class="chip" data-preset="${esc(p.label)}">${esc(p.label)}</button>`).join('');
   const doc = findDoctor(doctorName);
   if (doc && doc.presets.length) {
     html += `<div class="sep">${esc(doc.name)} 先生用</div>` +
@@ -436,10 +460,10 @@ function presetChips(doctorName) {
   }
   return html;
 }
-function slotSummary(s) {
-  if (slotEmpty(s)) return {text:'未入力', empty:true};
-  const parts = [s.patient && `${s.patient}`, s.treatment].filter(Boolean);
-  return {text: parts.join(' ・ ') || (s.memo ? 'メモあり' : ''), empty:false};
+function slotSummary(s) {   // html を返す
+  if (slotEmpty(s)) return {html:'未入力', empty:true};
+  const parts = [s.patient, s.treatment].filter(Boolean).map(esc);
+  return {html: tagsHtml(s) + (parts.join(' ・ ') || (s.memo ? 'メモあり' : '')), empty:false};
 }
 const unitLabel = u => u ? (/^\d+$/.test(u) ? `U${u}` : u) : '';
 
@@ -449,7 +473,7 @@ function viewSlot(time) {
   const open = state.open === time, sum = slotSummary(s);
   const head = `<button class="shead" data-toggle="${time}">
       <span class="stime">${showTime(time)}</span>
-      <span class="ssum ${sum.empty ? 'empty' : ''}">${esc(sum.text)}</span>
+      <span class="ssum ${sum.empty ? 'empty' : ''}">${sum.html}</span>
       <span class="sunit" ${s.unit ? '' : 'hidden'}>${esc(unitLabel(s.unit))}</span>
       <span style="color:var(--sub)">${open ? '▴' : '▾'}</span>
     </button>`;
@@ -462,7 +486,7 @@ function viewSlot(time) {
       <input data-sf="patient" value="${esc(s.patient)}" placeholder="患者名" autocomplete="off">
       <label class="lab">治療内容</label>
       <input data-sf="treatment" value="${esc(s.treatment)}" placeholder="治療内容（下のボタンで1タップ入力）" autocomplete="off">
-      <div class="chips">${presetChips(half && half.doctor)}</div>
+      <div class="chips">${presetChips(half && half.doctor, s)}</div>
       <label class="lab">ユニット</label>
       <div class="units">${units}</div>
       <label class="lab">メモ</label>
@@ -568,10 +592,10 @@ function searchResults(q) {
       }
       for (const t of Object.keys(half.slots).sort()) {
         const s = half.slots[t];
-        if (!hit(s.patient, s.treatment, s.memo, s.unit, unitLabel(s.unit))) continue;
+        if (!hit(s.patient, s.treatment, s.memo, s.unit, unitLabel(s.unit), ...(s.tags || []).map(x => ICONS[x] && ICONS[x].label))) continue;
         items.push(`<button class="res" data-go="${date}|${h}|${t}">
           <div class="when">${dayLabel(date)} ${HALF[h].label} ${showTime(t)}${s.unit ? ' ・ ' + hl(unitLabel(s.unit), q.trim()) : ''}${half.doctor ? ' ・ ' + esc(half.doctor) : ''}</div>
-          <div class="main">${hl(s.patient || '（患者名なし）', q.trim())}${s.treatment ? ' ・ ' + hl(s.treatment, q.trim()) : ''}</div>
+          <div class="main">${tagsHtml(s)}${hl(s.patient || '（患者名なし）', q.trim())}${s.treatment ? ' ・ ' + hl(s.treatment, q.trim()) : ''}</div>
           ${s.memo ? `<div class="memo">${hl(s.memo, q.trim())}</div>` : ''}</button>`);
       }
     }
@@ -592,7 +616,7 @@ function viewSearch() {
 
 function presetEditor(listId, list) {
   return list.map((p, i) => `<div class="row">
-      <input data-pl="${listId}|${p.id}" value="${esc(p.label)}">
+      ${p.icon ? iconHtml(p.id) : ''}<input data-pl="${listId}|${p.id}" value="${esc(p.label)}">
       <button class="sb" data-pup="${listId}|${p.id}" ${i === 0 ? 'disabled style="opacity:.3"' : ''} aria-label="上へ">↑</button>
       <button class="sb del" data-pdel="${listId}|${p.id}">削除</button>
     </div>`).join('') +
@@ -696,7 +720,7 @@ function refreshSlotHead(time) {
   const s = getSlot(state.date, state.half, time) || {};
   const sum = slotSummary(s);
   const ss = el.querySelector('.ssum');
-  ss.textContent = sum.text; ss.classList.toggle('empty', sum.empty);
+  ss.innerHTML = sum.html; ss.classList.toggle('empty', sum.empty);
   const su = el.querySelector('.sunit');
   su.textContent = unitLabel(s.unit); su.hidden = !s.unit;
 }
@@ -770,6 +794,14 @@ app.addEventListener('click', e => {
     half.doctor = remoteName(d.adopt, r); half.sentan = !!r.sentan; delete half.syncPending;
     saveNow(); render(); toast('アシスト先をそろえました');
     return;
+  }
+  if (d.tag) {
+    const slot = t.closest('.slot'), time = slot.dataset.time;
+    const s = getSlot(state.date, state.half, time, true);
+    const tags = s.tags || [];
+    s.tags = tags.includes(d.tag) ? tags.filter(x => x !== d.tag) : Object.keys(ICONS).filter(x => x === d.tag || tags.includes(x));
+    t.classList.toggle('on', s.tags.includes(d.tag));
+    save(); refreshSlotHead(time); return;
   }
   if (d.preset !== undefined) {
     const time = t.closest('.slot').dataset.time;

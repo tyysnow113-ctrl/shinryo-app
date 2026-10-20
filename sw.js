@@ -1,5 +1,5 @@
 // オフライン用キャッシュ。index.html などを更新したら VERSION を上げる
-const VERSION = 'v9';
+const VERSION = 'v10';
 const CACHE = 'shinryo-' + VERSION;
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-180.png', './icon-512.png'];
 

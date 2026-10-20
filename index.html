@@ -1,0 +1,1375 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="診療予習帳">
+<meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111316" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>診療予習帳</title>
+<style>
+:root{
+  --bg:#f4f5f7;--card:#fff;--text:#1c1e21;--sub:#6b7280;--line:#e3e5e9;
+  --accent:#2f6fde;--accent-weak:#e6eefc;--ok:#1f9d55;--ok-weak:#e3f5ea;
+  --am:#2f6fde;--am-weak:#e6eefc;--pm:#d9731a;--pm-weak:#fcefe2;
+  --sun:#d64545;--sat:#2f6fde;--danger:#d64545;--danger-weak:#fde8e8;--today:#fff6d6;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#111316;--card:#1b1e23;--text:#e8eaed;--sub:#9aa0a6;--line:#2c3037;
+  --accent:#6c9cff;--accent-weak:#1e2a44;--ok:#3ecf7a;--ok-weak:#163423;
+  --am:#6c9cff;--am-weak:#1e2a44;--pm:#f0a050;--pm-weak:#3a2a17;
+  --sun:#ff7b7b;--sat:#7aa7ff;--danger:#ff7b7b;--danger-weak:#3d1c1c;--today:#3a3416;
+}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;font-size:15px}
+body{padding:0 env(safe-area-inset-right) calc(24px + env(safe-area-inset-bottom)) env(safe-area-inset-left);overscroll-behavior-y:none}
+button{font:inherit;color:inherit;cursor:pointer}
+input,textarea{font:inherit;font-size:16px;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 10px;width:100%}
+textarea{min-height:70px;resize:vertical}
+input:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
+
+.bar{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;align-items:center;gap:6px;
+  padding:calc(8px + env(safe-area-inset-top)) 10px 8px;border-bottom:1px solid var(--line)}
+.bar h1{font-size:18px;margin:0;flex:1;text-align:center;white-space:nowrap}
+.ib{background:none;border:none;padding:6px 10px;border-radius:8px;color:var(--accent);font-size:16px;min-height:36px;white-space:nowrap}
+.ib:active{background:var(--accent-weak)}
+.ib.big{font-size:22px;padding:2px 12px}
+
+/* カレンダー */
+.wk{display:grid;grid-template-columns:repeat(7,1fr);font-size:11px;text-align:center;color:var(--sub);padding:4px 0}
+.wk span:first-child{color:var(--sun)} .wk span:last-child{color:var(--sat)}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--line);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.day{background:var(--card);min-height:86px;padding:2px;min-width:0}
+.day.out{opacity:.4}
+.day.today{background:var(--today)}
+.dnum{font-size:12px;font-weight:600;padding:1px 3px}
+.day.sun .dnum{color:var(--sun)} .day.sat .dnum{color:var(--sat)}
+.hrow{display:flex;align-items:center;gap:2px;height:26px;border-radius:5px;margin-top:2px;padding:0 2px;
+  font-size:10px;border-left:3px solid transparent;overflow:hidden;cursor:pointer}
+.hrow .lbl{color:var(--sub);opacity:.6;padding-left:2px}
+.hrow.am.has{border-left-color:var(--am);background:var(--am-weak)}
+.hrow.pm.has{border-left-color:var(--pm);background:var(--pm-weak)}
+.hname{white-space:nowrap;overflow:hidden;flex:1;min-width:0;font-weight:600}
+.chk{flex:none;width:19px;height:19px;border-radius:50%;border:1.5px solid var(--sub);background:var(--card);
+  padding:0;font-size:12px;line-height:1;color:#fff;display:grid;place-items:center}
+.chk.on{background:var(--ok);border-color:var(--ok)}
+.legend{display:flex;gap:14px;justify-content:center;font-size:12px;color:var(--sub);padding:10px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+
+/* 午前・午後画面 */
+.wrap{padding:12px;max-width:640px;margin:0 auto}
+.seg{display:flex;background:var(--line);border-radius:10px;padding:3px;gap:3px}
+.seg button{flex:1;border:none;background:none;border-radius:8px;padding:8px 4px;font-size:14px}
+.seg button.on{background:var(--card);font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.seg small{display:block;font-size:11px;color:var(--sub);font-weight:400}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px}
+.lab{font-size:12px;color:var(--sub);margin:10px 0 4px;display:block}
+.lab:first-child{margin-top:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:6px 12px;font-size:14px}
+.chip:active{background:var(--accent-weak)}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.chip.doc{border-color:var(--accent);color:var(--accent)}
+.sentan{display:flex;align-items:center;gap:10px;width:100%;border:1.5px solid var(--line);background:var(--bg);
+  border-radius:10px;padding:10px 12px;margin-top:12px;font-size:15px;text-align:left}
+.sentan .chk{width:24px;height:24px;font-size:15px}
+.sentan.on{border-color:var(--ok);background:var(--ok-weak)}
+.slot{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-top:8px;overflow:hidden}
+.slot.open{border-color:var(--accent)}
+.shead{display:flex;align-items:center;gap:10px;width:100%;border:none;background:none;padding:12px;text-align:left;min-height:50px}
+.stime{font-weight:700;font-variant-numeric:tabular-nums;width:44px;flex:none}
+.ssum{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ssum.empty{color:var(--sub);opacity:.6}
+.sunit{flex:none;font-size:12px;background:var(--accent-weak);color:var(--accent);border-radius:6px;padding:2px 6px}
+.sbody{padding:0 12px 12px}
+.units{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}
+.units button{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 0;font-size:14px;font-variant-numeric:tabular-nums}
+.units button.wide{grid-column:span 2;font-size:13px}
+.units button.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+.danger{color:var(--danger);border:none;background:none;padding:10px 0 0;font-size:14px}
+.sep{width:100%;font-size:11px;color:var(--sub);margin-top:4px}
+
+/* 検索・設定 */
+.res{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:8px}
+.res .when{font-size:12px;color:var(--sub)}
+.res .main{margin-top:2px}
+.res .memo{font-size:13px;color:var(--sub);margin-top:2px;white-space:pre-wrap}
+mark{background:#ffe066;color:#000;border-radius:2px}
+.empty-msg{color:var(--sub);text-align:center;padding:30px 0}
+h2{font-size:14px;color:var(--sub);margin:22px 4px 6px;font-weight:600}
+.row{display:flex;gap:6px;align-items:center;margin-top:6px}
+.row input{flex:1}
+.sb{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:9px 12px;white-space:nowrap;font-size:14px}
+.sb.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.sb.del{color:var(--danger)}
+.doc-block{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+.doc-block:first-child{border-top:none;padding-top:0;margin-top:0}
+.note{font-size:12px;color:var(--sub);margin-top:8px;line-height:1.6}
+.wgrid{display:grid;grid-template-columns:28px 1fr 1fr;gap:6px;align-items:center}
+.wgrid .wh{font-size:12px;color:var(--sub);text-align:center}
+.wgrid .wd{text-align:center;font-weight:600}
+.wgrid .wd.sun{color:var(--sun)} .wgrid .wd.sat{color:var(--sat)}
+.wgrid input{padding:8px}
+.banner{margin:8px 10px 0;padding:10px 12px;border-radius:10px;background:var(--pm-weak);font-size:13px;line-height:1.6}
+.banner .sb{padding:4px 10px;margin-left:6px}
+.warn{background:var(--pm-weak);border-radius:8px;padding:8px 10px}
+.warn .sb{padding:4px 10px;margin-left:6px}
+.others{margin-top:10px;border-top:1px dashed var(--line);padding-top:6px}
+.orow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;font-size:14px}
+.orow .sb{padding:5px 10px;font-size:13px}
+.toast.act{pointer-events:auto}
+.toast .undo{background:none;border:none;color:#7fb2ff;font-weight:700;padding:4px 0 4px 10px;font-size:14px}
+.updatebar{position:fixed;left:12px;right:12px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:30;
+  border:none;border-radius:12px;padding:14px;background:var(--accent);color:#fff;font-size:15px;box-shadow:0 4px 16px rgba(0,0,0,.25)}
+.hrow.alert{outline:2px solid var(--danger);outline-offset:-2px}
+.hrow.soon{outline:2px solid var(--pm);outline-offset:-2px}
+.alink .tag{display:inline-block;min-width:4.5em;font-size:12px;font-weight:700;color:#fff;background:var(--danger);border-radius:4px;padding:1px 5px;margin-right:6px;text-align:center}
+.alink .tag.soon{background:var(--pm)}
+.sentan.soon{border-color:var(--pm);background:var(--pm-weak)}
+.wdchips{display:flex;gap:4px}
+.wdchips button{flex:1;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 0;font-size:14px}
+.wdchips button.on{background:var(--danger);border-color:var(--danger);color:#fff;font-weight:700}
+.hrow.alert .chk{border-color:var(--danger);border-width:2px}
+.banner.alert{background:var(--danger-weak);border:1.5px solid var(--danger)}
+.banner.alert b{color:var(--danger)}
+.alink{display:block;width:100%;text-align:left;background:none;border:none;padding:6px 0 0;font-size:14px;color:var(--text)}
+.alink u{color:var(--danger);text-decoration:none;font-weight:700}
+.sentan.alert{border-color:var(--danger);background:var(--danger-weak)}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);
+  background:rgba(30,30,30,.92);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:20;
+  opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+<button class="updatebar" id="updateBar" hidden>新しいバージョンがあります　<b>タップで更新</b></button>
+<script>
+'use strict';
+const KEY = 'shinryoYoshucho.v1';
+const UNITS = [...Array.from({length:22}, (_, i) => String(i + 1)), 'オペ室', '検査室'];
+const HALF = {
+  am: {label:'午前', start:'09:00', end:'12:00'},
+  pm: {label:'午後', start:'13:00', end:'16:00'},
+};
+const WD = '日月火水木金土';
+
+const uid = () => Math.random().toString(36).slice(2, 10);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2, '0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseYmd = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+const toTime = m => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+const showTime = t => t.slice(0, 5).replace(/^0/, '');   // 枠キーは "09:00" または同時刻2人目以降 "09:00~2"
+const APP_VERSION = '1.9';
+// 先生名の表記ゆれ吸収：全角半角・大小文字・空白・「先生」「Dr.」などの付け足し・カタカナ/ひらがな
+function normDoc(n) {
+  let s = String(n || '').normalize('NFKC').toLowerCase().replace(/\s/g, '');
+  const core = s.replace(/^(dr\.?|ドクター)/, '').replace(/(歯科医師|医師|先生|せんせい|センセイ|dr\.?|ドクター)$/, '');
+  s = core || s;
+  return s.replace(/[\u30a1-\u30f6]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
+}
+// 日本の祝日（振替休日・国民の休日を含む。1980〜2099年）
+const holidayCache = {};
+function holidays(y) {
+  if (holidayCache[y]) return holidayCache[y];
+  const set = new Set(), add = (m, d) => set.add(ymd(new Date(y, m - 1, d)));
+  const nthMon = (m, n) => 1 + ((8 - new Date(y, m - 1, 1).getDay()) % 7) + (n - 1) * 7;
+  [[1, 1], [2, 11], [2, 23], [4, 29], [5, 3], [5, 4], [5, 5], [8, 11], [11, 3], [11, 23]].forEach(([m, d]) => add(m, d));
+  add(1, nthMon(1, 2)); add(7, nthMon(7, 3)); add(9, nthMon(9, 3)); add(10, nthMon(10, 2));
+  const k = Math.floor((y - 1980) / 4);
+  add(3, Math.floor(20.8431 + 0.242194 * (y - 1980) - k));
+  add(9, Math.floor(23.2488 + 0.242194 * (y - 1980) - k));
+  for (const s of [...set]) {
+    const d = parseYmd(s), d1 = new Date(y, d.getMonth(), d.getDate() + 1), d2 = new Date(y, d.getMonth(), d.getDate() + 2);
+    if (set.has(ymd(d2)) && !set.has(ymd(d1)) && d1.getDay() !== 0) set.add(ymd(d1));
+  }
+  for (const s of [...set].sort()) {
+    const d = parseYmd(s);
+    if (d.getDay() !== 0) continue;
+    const n = new Date(d);
+    do n.setDate(n.getDate() + 1); while (set.has(ymd(n)));
+    set.add(ymd(n));
+  }
+  return holidayCache[y] = set;
+}
+const isHoliday = s => holidays(Number(s.slice(0, 4))).has(s);
+const dayLabel = s => { const d = parseYmd(s); return `${d.getMonth() + 1}/${d.getDate()}(${WD[d.getDay()]})`; };
+
+// ---------- データ ----------
+function migrate(d) {
+  d = d && typeof d === 'object' ? d : {};
+  d.version = 1;
+  if (!d.days || typeof d.days !== 'object') d.days = {};
+  if (!Array.isArray(d.doctors)) d.doctors = [];
+  if (!Array.isArray(d.presets)) d.presets = [{id:uid(), label:'先端'}, {id:uid(), label:'メンテ'}];
+  if (!d.weekly || typeof d.weekly !== 'object') d.weekly = {};
+  if (!d.sync || typeof d.sync !== 'object') d.sync = {};
+  if (!d.settings) d.settings = {};
+  if (![15, 30, 60].includes(d.settings.step)) d.settings.step = 30;
+  if (!d.settings.firstUse) d.settings.firstUse = Date.now();
+  if (!Array.isArray(d.settings.closedWd)) d.settings.closedWd = [0];
+  if (typeof d.settings.closedHoliday !== 'boolean') d.settings.closedHoliday = true;
+  if (!d.settings.deadlineV2) {   // 初期値：土日祝休診・2診療日前の15:00締切（水曜の治療→月曜15:00）
+    Object.assign(d.settings, {closedWd:[0, 6], closedHoliday:true, orderLead:2, orderTime:'15:00', deadlineV2:true});
+  }
+  if (!(d.settings.orderLead >= 1 && d.settings.orderLead <= 10)) d.settings.orderLead = 2;
+  if (!/^\d{2}:\d{2}$/.test(d.settings.orderTime || '')) d.settings.orderTime = '15:00';
+  return d;
+}
+function load() {
+  try { return migrate(JSON.parse(localStorage.getItem(KEY))); } catch (e) { return migrate(null); }
+}
+let db = load();
+
+const slotEmpty = s => !s || !(s.patient || s.treatment || s.unit || s.memo);
+const keepSlot = s => s && (s.extra || !slotEmpty(s));   // ＋で追加した枠は空でも残す
+const halfEmpty = h => !h || !(h.doctor || h.sentan || h.memo || Object.values(h.slots || {}).some(keepSlot));
+function prune() {
+  for (const [date, day] of Object.entries(db.days)) {
+    for (const k of ['am', 'pm']) {
+      const h = day[k];
+      if (!h) continue;
+      for (const [t, s] of Object.entries(h.slots || {})) if (!keepSlot(s)) delete h.slots[t];
+      if (halfEmpty(h)) delete day[k];
+    }
+    if (!day.am && !day.pm) delete db.days[date];
+  }
+}
+let saveTimer;
+function saveNow() {
+  clearTimeout(saveTimer);
+  prune();
+  try { localStorage.setItem(KEY, JSON.stringify(db)); }
+  catch (e) { toast('保存に失敗しました（容量不足の可能性）'); }
+}
+function save() { clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 300); }
+addEventListener('pagehide', saveNow);
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveNow(); });
+
+// 毎回 db から辿る（prune で参照が切れても書き込みが消えないように）
+function getHalf(date, h, create) {
+  let day = db.days[date];
+  if (!day) { if (!create) return null; day = db.days[date] = {}; }
+  if (!day[h]) { if (!create) return null; day[h] = {doctor:'', sentan:false, memo:'', slots:{}}; }
+  if (!day[h].slots) day[h].slots = {};
+  return day[h];
+}
+function getSlot(date, h, time, create) {
+  const half = getHalf(date, h, create);
+  if (!half) return null;
+  if (!half.slots[time]) { if (!create) return null; half.slots[time] = {patient:'', treatment:'', unit:'', memo:''}; }
+  return half.slots[time];
+}
+function times(date, h) {
+  const {start, end} = HALF[h], step = db.settings.step, set = new Set();
+  for (let m = toMin(start); m < toMin(end); m += step) set.add(toTime(m));
+  const half = getHalf(date, h);
+  if (half) for (const [t, s] of Object.entries(half.slots)) if (keepSlot(s)) set.add(t);
+  return [...set].sort();
+}
+const patientCount = half => half ? Object.values(half.slots).filter(s => s.patient || s.treatment).length : 0;
+const liveDoctors = () => db.doctors.filter(d => d.name && !d.deleted);
+// 先端オーダーがある先生か（リストにない名前・空欄はチェックを出す）
+const hasOrder = name => { const d = findDoctor(name); return !d || d.order !== false; };
+const findDoctor = name => { const k = normDoc(name); return k ? liveDoctors().find(d => normDoc(d.name) === k) : undefined; };
+function renameHalves(oldName, newName) {
+  const k = normDoc(oldName);
+  for (const day of Object.values(db.days)) for (const h of ['am', 'pm']) if (day[h] && normDoc(day[h].doctor) === k) day[h].doctor = newName;
+  for (const w of Object.keys(db.weekly)) if (normDoc(db.weekly[w]) === k) db.weekly[w] = newName;
+}
+
+// ---------- 状態・描画 ----------
+const now = new Date();
+const state = {view:'cal', y:now.getFullYear(), m:now.getMonth(), date:ymd(now), half:'am', open:null, q:'', openDoc:null};
+const app = document.getElementById('app');
+
+function go(view, patch = {}) {
+  saveNow();
+  Object.assign(state, patch, {view});
+  render();
+  scrollTo(0, 0);
+}
+function render() {
+  applyRemoteAll();
+  watchMonth();
+  app.innerHTML = ({cal:viewCal, half:viewHalf, search:viewSearch, settings:viewSettings})[state.view]();
+  if (state.view === 'search') {
+    const q = document.getElementById('q');
+    q.focus(); q.setSelectionRange(q.value.length, q.value.length);
+  }
+}
+
+// 先端オーダーの入れ忘れ：先端ありの先生で「未」のまま（今日と次の診療日）
+// 先端オーダーの締切：治療日の orderLead 診療日前まで（休診曜日・祝日は数えない）
+const isClinicDay = s => !db.settings.closedWd.includes(parseYmd(s).getDay()) && !(db.settings.closedHoliday && isHoliday(s));
+function clinicDaysUntil(date) {   // 今日より後〜治療日までの診療日数
+  const today = ymd(new Date());
+  if (date <= today) return 0;
+  const d = parseYmd(today);
+  let n = 0;
+  for (let i = 0; i < 366; i++) {
+    d.setDate(d.getDate() + 1);
+    const s = ymd(d);
+    if (isClinicDay(s)) n++;
+    if (s >= date || n > db.settings.orderLead + 1) break;
+  }
+  return n;
+}
+function deadlineOf(date) {
+  const d = parseYmd(date);
+  for (let n = 0, i = 0; n < db.settings.orderLead && i < 366; i++) {
+    d.setDate(d.getDate() - 1);
+    if (isClinicDay(ymd(d))) n++;
+  }
+  return ymd(d);
+}
+// '' / 'soon'（明日締切） / 'due'（今日締切） / 'late'（締切すぎ）
+// 設定画面の例：直前の週に休診日がない水曜（なければ近くの診療日）の締切
+function deadlineExample() {
+  const d = new Date(); d.setDate(d.getDate() + 1);
+  const clean = x => { for (let i = 1; i <= 7; i++) { const y = new Date(x); y.setDate(y.getDate() - i); if (y.getDay() % 6 && !isClinicDay(ymd(y))) return false; } return true; };
+  for (let i = 0; i < 120 && !(d.getDay() === 3 && isClinicDay(ymd(d)) && clean(d)); i++) d.setDate(d.getDate() + 1);
+  while (!isClinicDay(ymd(d))) d.setDate(d.getDate() + 1);
+  const s = ymd(d);
+  return `例：${dayLabel(s)}の治療 → ${dayLabel(deadlineOf(s))} ${db.settings.orderTime} 締切`;
+}
+function deadlineAt(date) {   // 締切の日時
+  const [hh, mm] = db.settings.orderTime.split(':').map(Number), d = parseYmd(deadlineOf(date));
+  d.setHours(hh, mm, 0, 0);
+  return d;
+}
+function orderStatus(date, h) {
+  const half = getHalf(date, h), now = new Date();
+  if (!half || !half.doctor || !half.doctor.trim() || half.sentan || !hasOrder(half.doctor) || date < ymd(now)) return '';
+  const dl = deadlineOf(date);
+  if (now >= deadlineAt(date)) return 'late';
+  if (dl === ymd(now)) return 'due';
+  return clinicDaysUntil(dl) === 1 ? 'soon' : '';   // 締切が次の診療日
+}
+function orderLabel(st, date) {
+  const t = db.settings.orderTime, dl = deadlineOf(date);
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+  if (st === 'late') return '締切すぎ';
+  if (st === 'due') return `今日${t}締切`;
+  return dl === ymd(tomorrow) ? `明日${t}締切` : `${WD[parseYmd(dl).getDay()]}曜${t}締切`;
+}
+const needsOrder = (date, h) => orderStatus(date, h);
+function banners() {
+  let out = '';
+  const today = ymd(new Date()), miss = [];
+  for (const d of Object.keys(db.days).filter(d => d >= today).sort()) for (const h of ['am', 'pm']) {
+    const st = orderStatus(d, h);
+    if (st) miss.push([d, h, st]);
+  }
+  if (miss.length) out += `<div class="banner alert"><b>先端オーダー 未</b>（タップで開く）` + miss.map(([d, h, st]) =>
+    `<button class="alink" data-open="${d}|${h}"><span class="tag ${st === 'soon' ? 'soon' : ''}">${orderLabel(st, d)}</span><u>${d === today ? '今日' : dayLabel(d)} ${HALF[h].label}</u>　${esc(getHalf(d, h).doctor)}</button>`).join('') + '</div>';
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
+  if (ios && !standalone) out += `<div class="banner">Safariで開いています。共有ボタン →「ホーム画面に追加」から開いて使ってください。Safariのままだと、しばらく開かないうちにデータが消えることがあります。</div>`;
+  const last = db.settings.lastBackupAt || db.settings.firstUse;
+  if (Object.keys(db.days).length && Date.now() - last > 30 * 864e5) out += `<div class="banner">前回のバックアップから30日以上たっています<button class="sb" data-act="export">書き出す</button></div>`;
+  return out;
+}
+
+function viewCal() {
+  const {y, m} = state, today = ymd(new Date());
+  const first = new Date(y, m, 1);
+  const start = new Date(y, m, 1 - first.getDay());
+  const lastDay = new Date(y, m + 1, 0).getDate();
+  const weeks = Math.ceil((first.getDay() + lastDay) / 7);
+  let cells = '';
+  for (let i = 0; i < weeks * 7; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    const ds = ymd(d), w = d.getDay();
+    const cls = ['day', d.getMonth() !== m && 'out', ds === today && 'today', (w === 0 || isHoliday(ds)) && 'sun', w === 6 && 'sat'].filter(Boolean).join(' ');
+    let rows = '';
+    for (const h of ['am', 'pm']) {
+      const half = getHalf(ds, h), has = !halfEmpty(half);
+      const n = patientCount(half);
+      const name = has ? (half.doctor || (n ? `${n}名` : '・')) : '';
+      rows += `<div class="hrow ${h} ${has ? 'has' : ''} ${has ? ({soon:'soon', due:'alert', late:'alert'}[orderStatus(ds, h)] || '') : ''}" data-open="${ds}|${h}">` +
+        (has
+          ? (hasOrder(half.doctor) ? `<button class="chk ${half.sentan ? 'on' : ''}" data-chk="${ds}|${h}" aria-label="先端オーダー">${half.sentan ? '✓' : ''}</button>` : '') + `<span class="hname">${esc(name)}</span>`
+          : `<span class="lbl">${h === 'am' ? '前' : '後'}</span>`) +
+        `</div>`;
+    }
+    cells += `<div class="${cls}"><div class="dnum">${d.getDate()}</div>${rows}</div>`;
+  }
+  return `
+  <header class="bar">
+    <button class="ib" data-act="search">検索</button>
+    <button class="ib big" data-act="prev" aria-label="前の月">‹</button>
+    <h1>${y}年${m + 1}月</h1>
+    <button class="ib big" data-act="next" aria-label="次の月">›</button>
+    <button class="ib" data-act="settings">設定</button>
+  </header>
+  ${banners()}
+  <div class="wk">${[...WD].map(c => `<span>${c}</span>`).join('')}</div>
+  <div class="cal" id="cal">${cells}</div>
+  <div class="legend">
+    <span><i style="background:var(--am)"></i>午前</span>
+    <span><i style="background:var(--pm)"></i>午後</span>
+    <span><i style="background:var(--ok);border-radius:50%"></i>先端オーダー済</span>
+  </div>
+  ${db.sync.group ? `<div class="legend" style="padding-top:0"><span class="syncstat">${esc(syncLabel())}</span></div>` : ''}
+  <div style="text-align:center">
+    <button class="ib" data-act="today">今日へ</button>
+    <button class="ib" data-act="weekly">週プリセットを${m + 1}月に反映</button>
+  </div>`;
+}
+
+function presetChips(doctorName) {
+  let html = db.presets.map(p => `<button class="chip" data-preset="${esc(p.label)}">${esc(p.label)}</button>`).join('');
+  const doc = findDoctor(doctorName);
+  if (doc && doc.presets.length) {
+    html += `<div class="sep">${esc(doc.name)} 先生用</div>` +
+      doc.presets.map(p => `<button class="chip doc" data-preset="${esc(p.label)}">${esc(p.label)}</button>`).join('');
+  }
+  return html;
+}
+function slotSummary(s) {
+  if (slotEmpty(s)) return {text:'未入力', empty:true};
+  const parts = [s.patient && `${s.patient}`, s.treatment].filter(Boolean);
+  return {text: parts.join(' ・ ') || (s.memo ? 'メモあり' : ''), empty:false};
+}
+const unitLabel = u => u ? (/^\d+$/.test(u) ? `U${u}` : u) : '';
+
+function viewSlot(time) {
+  const {date, half: h} = state;
+  const s = getSlot(date, h, time) || {patient:'', treatment:'', unit:'', memo:''};
+  const open = state.open === time, sum = slotSummary(s);
+  const head = `<button class="shead" data-toggle="${time}">
+      <span class="stime">${showTime(time)}</span>
+      <span class="ssum ${sum.empty ? 'empty' : ''}">${esc(sum.text)}</span>
+      <span class="sunit" ${s.unit ? '' : 'hidden'}>${esc(unitLabel(s.unit))}</span>
+      <span style="color:var(--sub)">${open ? '▴' : '▾'}</span>
+    </button>`;
+  if (!open) return `<div class="slot" data-time="${time}">${head}</div>`;
+  const half = getHalf(date, h);
+  const units = UNITS.map(u => `<button class="${/^\d+$/.test(u) ? '' : 'wide'} ${s.unit === u ? 'on' : ''}" data-unit="${esc(u)}">${esc(u)}</button>`).join('');
+  return `<div class="slot open" data-time="${time}">${head}
+    <div class="sbody">
+      <label class="lab">患者名</label>
+      <input data-sf="patient" value="${esc(s.patient)}" placeholder="患者名" autocomplete="off">
+      <label class="lab">治療内容</label>
+      <input data-sf="treatment" value="${esc(s.treatment)}" placeholder="治療内容（下のボタンで1タップ入力）" autocomplete="off">
+      <div class="chips">${presetChips(half && half.doctor)}</div>
+      <label class="lab">ユニット</label>
+      <div class="units">${units}</div>
+      <label class="lab">メモ</label>
+      <textarea data-sf="memo" placeholder="予習メモ・注意点など">${esc(s.memo)}</textarea>
+      <button class="danger" data-clear="${time}">${s.extra ? 'この枠を削除' : 'この枠をクリア'}</button>
+    </div></div>`;
+}
+
+function sentanHtml(half, date, h) {
+  if (!hasOrder(half.doctor)) return `<div class="note">${esc(findDoctor(half.doctor).name)} 先生は先端オーダーなしの設定です（設定の先生リストで変更できます）</div>`;
+  let info = '';
+  if (db.sync.group) {
+    const m = half.doctor && sync.meta[checkId(date, h, half.doctor)];
+    if (!half.doctor) info = 'アシスト先を入れると共有されます';
+    else if (half.syncPending) info = '共有：送信待ち（電波が戻ると送信）';
+    else if (m) info = `共有：${m.by || 'だれか'}さんが${m.at ? ' ' + fmtAt(m.at) + ' に' : ''}${m.sentan ? '済' : '未'}にしました`;
+    else info = '共有：まだ誰も記録していません';
+  }
+  const st = orderStatus(date, h);
+  if (half.doctor && !half.sentan) info = `入力締切：${dayLabel(deadlineOf(date))} ${db.settings.orderTime}${st === 'due' || st === 'late' ? `（${orderLabel(st, date)}）` : ''}` + (info ? '\n' + info : '');
+  return `<button class="sentan ${half.sentan ? 'on' : ''} ${{soon:'soon', due:'alert', late:'alert'}[st] || ''}" data-act="sentan">
+      <span class="chk ${half.sentan ? 'on' : ''}">${half.sentan ? '✓' : ''}</span>
+      先端オーダー ${half.sentan ? '済' : '未'}
+    </button>${info ? `<div class="note" style="white-space:pre-line">${esc(info)}</div>` : ''}${othersHtml(half, date, h)}`;
+}
+// 同じ日・同じ枠で、自分とは別の先生名で共有されている記録（表記ゆれに気づけるように）
+function othersHtml(half, date, h) {
+  if (!db.sync.group) return '';
+  const myId = half.doctor ? checkId(date, h, half.doctor) : '';
+  const others = Object.entries(sync.meta).filter(([id, r]) => r.date === date && r.half === h && id !== myId);
+  if (!others.length) return '';
+  return `<div class="others"><div class="note">同じ枠で共有されているほかの記録${half.doctor ? '（同じ先生の表記ちがいなら、そろえてください）' : ''}</div>` +
+    others.map(([id, r]) => `<div class="orow"><span>${esc(remoteName(id, r))}：${r.sentan ? '済' : '未'}${r.by ? `（${esc(r.by)}）` : ''}</span>
+      <button class="sb" data-adopt="${esc(id)}">この先生にそろえる</button></div>`).join('') + '</div>';
+}
+
+function viewHalf() {
+  const {date, half: h} = state;
+  const half = getHalf(date, h) || {doctor:'', sentan:false, memo:''};
+  const docChips = liveDoctors().map(d =>
+    `<button class="chip ${half.doctor && normDoc(half.doctor) === normDoc(d.name) ? 'on' : ''}" data-doc="${esc(d.name)}">${esc(d.name)}</button>`).join('');
+  const unreg = half.doctor && half.doctor.trim() && !findDoctor(half.doctor);
+  return `
+  <header class="bar">
+    <button class="ib" data-act="back">‹ 月表示</button>
+    <button class="ib big" data-act="prevday" aria-label="前の日">‹</button>
+    <h1>${dayLabel(date)}</h1>
+    <button class="ib big" data-act="nextday" aria-label="次の日">›</button>
+    <span style="width:62px"></span>
+  </header>
+  <div class="wrap">
+    <div class="seg">
+      ${['am', 'pm'].map(k => `<button class="${k === h ? 'on' : ''}" data-half="${k}">${HALF[k].label}<small>${showTime(HALF[k].start)}–${showTime(HALF[k].end)}</small></button>`).join('')}
+    </div>
+    <div class="card">
+      <label class="lab">アシスト先</label>
+      <input data-hf="doctor" value="${esc(half.doctor)}" placeholder="先生の名前" autocomplete="off">
+      ${unreg ? `<div class="note warn">「${esc(half.doctor)}」は先生リストにありません。${db.sync.group ? '共有で確実に連動させるには登録してください。' : ''}<button class="sb" data-act="regdoc">リストに追加</button></div>` : ''}
+      ${docChips ? `<div class="chips">${docChips}</div>` : `<div class="note">「設定」で先生を登録すると、ここでワンタップ選択できます。</div>`}
+      <div id="sentanBox">${sentanHtml(half, date, h)}</div>
+      ${db.sync.group ? `<button class="sb" data-act="history" style="margin-top:10px">この枠の変更履歴</button><div id="histBox"></div>` : ''}
+    </div>
+    <div id="slots">${times(date, h).map(viewSlot).join('')}</div>
+    <div class="card addslot">
+      <label class="lab">＋ 枠を追加（時刻を選んで追加。同じ時刻の2人目もOK）</label>
+      <div class="row" style="margin-top:0">
+        <input type="time" id="addTime" value="${HALF[h].start}" step="300">
+        <button class="sb pri" data-act="addslot">＋ 追加</button>
+      </div>
+    </div>
+    <div class="card">
+      <label class="lab">${HALF[h].label}のメモ</label>
+      <textarea data-hf="memo" placeholder="この枠全体のメモ">${esc(half.memo)}</textarea>
+    </div>
+  </div>`;
+}
+
+function hl(text, q) {
+  text = String(text || '');
+  if (!q) return esc(text);
+  const lower = text.toLowerCase(), ql = q.toLowerCase();
+  let out = '', i = 0, j;
+  while ((j = lower.indexOf(ql, i)) !== -1) {
+    out += esc(text.slice(i, j)) + '<mark>' + esc(text.slice(j, j + q.length)) + '</mark>';
+    i = j + q.length;
+  }
+  return out + esc(text.slice(i));
+}
+function searchResults(q) {
+  const ql = q.trim().toLowerCase();
+  if (!ql) return '<div class="empty-msg">患者名・治療内容・先生・メモなどを検索できます</div>';
+  const hit = (...xs) => xs.some(x => String(x || '').toLowerCase().includes(ql));
+  const items = [];
+  for (const date of Object.keys(db.days).sort().reverse()) {
+    for (const h of ['am', 'pm']) {
+      const half = db.days[date][h];
+      if (!half) continue;
+      if (hit(half.doctor, half.memo)) {
+        items.push(`<button class="res" data-go="${date}|${h}|">
+          <div class="when">${dayLabel(date)} ${HALF[h].label}</div>
+          <div class="main">アシスト先：${hl(half.doctor || '—', q.trim())}</div>
+          ${half.memo ? `<div class="memo">${hl(half.memo, q.trim())}</div>` : ''}</button>`);
+      }
+      for (const t of Object.keys(half.slots).sort()) {
+        const s = half.slots[t];
+        if (!hit(s.patient, s.treatment, s.memo, s.unit, unitLabel(s.unit))) continue;
+        items.push(`<button class="res" data-go="${date}|${h}|${t}">
+          <div class="when">${dayLabel(date)} ${HALF[h].label} ${showTime(t)}${s.unit ? ' ・ ' + hl(unitLabel(s.unit), q.trim()) : ''}${half.doctor ? ' ・ ' + esc(half.doctor) : ''}</div>
+          <div class="main">${hl(s.patient || '（患者名なし）', q.trim())}${s.treatment ? ' ・ ' + hl(s.treatment, q.trim()) : ''}</div>
+          ${s.memo ? `<div class="memo">${hl(s.memo, q.trim())}</div>` : ''}</button>`);
+      }
+    }
+  }
+  return items.length ? `<div class="note">${items.length}件</div>` + items.join('') : '<div class="empty-msg">見つかりませんでした</div>';
+}
+function viewSearch() {
+  return `
+  <header class="bar">
+    <button class="ib" data-act="back">‹ 月表示</button>
+    <h1>検索</h1><span style="width:80px"></span>
+  </header>
+  <div class="wrap">
+    <input id="q" type="search" value="${esc(state.q)}" placeholder="キーワードを入力" autocomplete="off">
+    <div id="results">${searchResults(state.q)}</div>
+  </div>`;
+}
+
+function presetEditor(listId, list) {
+  return list.map((p, i) => `<div class="row">
+      <input data-pl="${listId}|${p.id}" value="${esc(p.label)}">
+      <button class="sb" data-pup="${listId}|${p.id}" ${i === 0 ? 'disabled style="opacity:.3"' : ''} aria-label="上へ">↑</button>
+      <button class="sb del" data-pdel="${listId}|${p.id}">削除</button>
+    </div>`).join('') +
+    `<div class="row"><input id="padd-${listId}" placeholder="新しいボタン名"><button class="sb pri" data-padd="${listId}">追加</button></div>`;
+}
+function viewSettings() {
+  const step = db.settings.step;
+  const docs = db.doctors.filter(d => !d.deleted).map(d => `<div class="doc-block">
+      <div class="row">
+        <input data-dn="${d.id}" value="${esc(d.name)}" placeholder="先生の名前">
+        <button class="sb ${d.order !== false ? 'pri' : ''}" data-dorder="${d.id}">${d.order !== false ? '先端あり' : '先端なし'}</button>
+        <button class="sb" data-dopen="${d.id}">${state.openDoc === d.id ? '閉じる' : `ボタン(${d.presets.length})`}</button>
+        <button class="sb del" data-ddel="${d.id}">削除</button>
+      </div>
+      ${state.openDoc === d.id ? `<div class="note">${esc(d.name)} 先生のときだけ表示されるボタン</div>${presetEditor(d.id, d.presets)}` : ''}
+    </div>`).join('');
+  const last = db.settings.lastBackup;
+  return `
+  <header class="bar">
+    <button class="ib" data-act="back">‹ 月表示</button>
+    <h1>設定</h1><span style="width:80px"></span>
+  </header>
+  <div class="wrap">
+    <h2>治療内容ボタン（全員共通）</h2>
+    <div class="card" style="margin-top:0">${presetEditor('global', db.presets)}</div>
+
+    <h2>アシスト先の先生 と 先生ごとのボタン</h2>
+    <div class="card" style="margin-top:0">
+      ${docs || '<div class="note" style="margin-top:0">まだ登録がありません</div>'}
+      <div class="row" style="margin-top:12px"><input id="dadd" placeholder="先生の名前を追加"><button class="sb pri" data-act="dadd">追加</button></div>
+    </div>
+
+    <h2>週の診療プリセット（曜日ごとのアシスト先）</h2>
+    <div class="card" style="margin-top:0">
+      <datalist id="doclist">${liveDoctors().map(d => `<option value="${esc(d.name)}">`).join('')}</datalist>
+      <div class="wgrid"><span></span><span class="wh">午前</span><span class="wh">午後</span>
+      ${[1, 2, 3, 4, 5, 6, 0].map(w => `<span class="wd ${w === 0 ? 'sun' : w === 6 ? 'sat' : ''}">${WD[w]}</span>` +
+        ['am', 'pm'].map(h => `<input data-wk="${w}${h}" list="doclist" value="${esc(db.weekly[w + h] || '')}" placeholder="—" autocomplete="off">`).join('')).join('')}
+      </div>
+      <div class="note">月表示の下の「週プリセットを○月に反映」で、アシスト先が空欄の枠にまとめて入ります。休診日などは各日の画面で消してください。</div>
+    </div>
+
+    <h2>先端オーダーの共有</h2>
+    <div class="card" style="margin-top:0">
+      <label class="lab">あなたの名前（チェックした人として表示）</label>
+      <input data-syncname value="${esc(db.sync.name || '')}" placeholder="例：たなか" autocomplete="off">
+      ${db.sync.group ? `
+        <div class="note">状態：<span class="syncstat">${esc(syncLabel())}</span></div>
+        <div class="row">
+          <button class="sb pri" data-act="syncShare" style="flex:1">参加コードを送る</button>
+          <button class="sb del" data-act="syncLeave">共有をやめる</button>
+        </div>
+        <div class="note">一緒に使う人に参加コードを送り、その人の「設定 → 参加コードで参加」に貼ってもらってください。</div>
+        <div class="row"><button class="sb" data-act="dochistory" style="flex:1">先生リストの変更履歴・削除した先生</button></div>
+        <div id="docHistBox"></div>` : `
+        <label class="lab">参加コードで参加（だれかが作った共有に入る）</label>
+        <textarea id="joinCode" placeholder="SHINRYO1: から始まるコードを貼り付け"></textarea>
+        <div class="row"><button class="sb pri" data-act="syncJoin" style="flex:1">参加する</button></div>
+        <label class="lab" style="margin-top:16px">新しく共有を作る（最初の1人だけ）</label>
+        <textarea id="fbConfig" placeholder="Firebase の firebaseConfig をそのまま貼り付け"></textarea>
+        <div class="row"><button class="sb" data-act="syncCreate" style="flex:1">共有を作る</button></div>`}
+      <div class="note">共有されるのは「日付・午前/午後・先生名・先端オーダー済/未・チェックした人の名前」と「先生リスト（名前のみ）」だけです。患者名・治療内容・メモ・ボタンは送信されません。<br>同じ日・同じ枠・同じ先生どうしでチェックが連動します。共有中は先生リストが全員で同じになるので、アシスト先はリストから選ぶのが確実です。</div>
+    </div>
+
+    <h2>先端オーダーの締切と休診日</h2>
+    <div class="card" style="margin-top:0">
+      <div class="row" style="margin-top:0;flex-wrap:wrap">治療日の<input type="number" inputmode="numeric" min="1" max="10" data-lead value="${db.settings.orderLead}" style="width:60px;flex:none;text-align:center">診療日前の<input type="time" data-otime value="${db.settings.orderTime}" style="width:135px;flex:none">まで</div>
+      <div class="note warn">${deadlineExample()}</div>
+      <label class="lab">休診の曜日（赤が休診）</label>
+      <div class="wdchips">${[1, 2, 3, 4, 5, 6, 0].map(w => `<button class="${db.settings.closedWd.includes(w) ? 'on' : ''}" data-closedwd="${w}">${WD[w]}</button>`).join('')}</div>
+      <div class="row"><button class="sb ${db.settings.closedHoliday ? 'pri' : ''}" data-act="closedHoliday" style="flex:1">祝日は${db.settings.closedHoliday ? '休診' : '診療'}</button></div>
+      <div class="note">締切が次の診療日のものはオレンジ、締切当日と締切すぎは赤で表示します。締切は休診日を数えずに計算します（週プリセットの反映でも休診日は飛ばします）。</div>
+    </div>
+
+    <h2>時間枠の刻み</h2>
+    <div class="seg">${[15, 30, 60].map(n => `<button class="${n === step ? 'on' : ''}" data-step="${n}">${n}分</button>`).join('')}</div>
+    <div class="note">午前 9:00–12:00 / 午後 13:00–16:00。変更しても入力済みの枠は残ります。</div>
+
+    <h2>バックアップ</h2>
+    <div class="card" style="margin-top:0">
+      <div class="row" style="margin-top:0">
+        <button class="sb pri" data-act="export" style="flex:1">書き出す</button>
+        <button class="sb" data-act="import" style="flex:1">読み込む</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+      <div class="note">データはこのiPhoneの中だけに保存されています。機種変更やアプリ削除に備えて、ときどき「書き出す」でファイルアプリ等に保存してください。患者名と共有の参加情報を含むので、ほかの人に渡さないでください。<br>最終書き出し：${last ? esc(last) : 'なし'}</div>
+    </div>
+
+    <h2>データ消去</h2>
+    <div class="card" style="margin-top:0">
+      <button class="sb del" data-act="wipe">すべてのデータを削除</button>
+    </div>
+    <div class="note" style="text-align:center;margin-top:20px">診療予習帳 バージョン ${APP_VERSION}</div>
+  </div>`;
+}
+
+// ---------- 部分更新 ----------
+function refreshSlotHead(time) {
+  const el = app.querySelector(`.slot[data-time="${time}"]`);
+  if (!el) return;
+  const s = getSlot(state.date, state.half, time) || {};
+  const sum = slotSummary(s);
+  const ss = el.querySelector('.ssum');
+  ss.textContent = sum.text; ss.classList.toggle('empty', sum.empty);
+  const su = el.querySelector('.sunit');
+  su.textContent = unitLabel(s.unit); su.hidden = !s.unit;
+}
+function toast(msg, undo) {
+  const t = document.getElementById('toast');
+  t.innerHTML = esc(msg) + (undo ? '<button class="undo">元に戻す</button>' : '');
+  t.classList.add('show'); t.classList.toggle('act', !!undo);
+  toast.undo = undo || null;
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => { t.classList.remove('show', 'act'); toast.undo = null; }, undo ? 4000 : 1800);
+}
+document.getElementById('toast').addEventListener('click', e => {
+  if (!e.target.closest('.undo') || !toast.undo) return;
+  const f = toast.undo; toast.undo = null;
+  document.getElementById('toast').classList.remove('show', 'act');
+  f();
+});
+const presetList = id => id === 'global' ? db.presets : (db.doctors.find(d => d.id === id) || {presets:[]}).presets;
+
+// ---------- イベント ----------
+app.addEventListener('click', e => {
+  const t = e.target.closest('button,[data-open]');
+  if (!t) return;
+  const d = t.dataset;
+
+  if (d.chk) {
+    const [date, h] = d.chk.split('|');
+    const half = getHalf(date, h, true), prev = half.sentan;
+    half.sentan = !prev; pushCheck(date, h); render();
+    toast(`${dayLabel(date)} ${HALF[h].label}：先端オーダーを${half.sentan ? '済' : '未'}にしました`, () => {
+      getHalf(date, h, true).sentan = prev; pushCheck(date, h); render();
+    });
+    return;
+  }
+  if (d.open) { const [date, half] = d.open.split('|'); return go('half', {date, half, open:null}); }
+  if (d.half) { saveNow(); state.half = d.half; state.open = null; return render(); }
+  if (d.toggle) {
+    saveNow();
+    state.open = state.open === d.toggle ? null : d.toggle;
+    render();
+    const el = app.querySelector(`.slot[data-time="${d.toggle}"]`);
+    if (el && state.open) el.scrollIntoView({block:'start', behavior:'smooth'});
+    return;
+  }
+  if (d.doc !== undefined) {
+    const half = getHalf(state.date, state.half, true), prev = half.doctor;
+    half.doctor = prev && normDoc(prev) === normDoc(d.doc) ? '' : d.doc;
+    doctorChanged(state.date, state.half, prev); saveNow(); return render();
+  }
+  if (d.restore !== undefined) {
+    const l = sync.hist && sync.hist[Number(d.restore)];
+    if (!l || !sync.store) return toast('オフラインのため戻せません');
+    if (!confirm(`${l.doctor}：先端オーダーを「${l.sentan ? '済' : '未'}」に戻しますか？`)) return;
+    restoreCheck(l); return;
+  }
+  if (d.restoredoc !== undefined) {
+    const l = sync.docHist && sync.docHist[Number(d.restoredoc)];
+    if (!l || !sync.store) return toast('オフラインのため戻せません');
+    if (!confirm(`先生リストを「${l.name}${l.deleted ? '（削除）' : ''}」の状態に戻しますか？`)) return;
+    restoreDoctor(l.doctorId, l.name, !!l.deleted, l.order !== false); return;
+  }
+  if (d.undel) {
+    const r = sync.remoteDoctors && sync.remoteDoctors[d.undel];
+    if (!r || !sync.store) return toast('オフラインのため戻せません');
+    restoreDoctor(d.undel, r.name, false, r.order !== false); return;
+  }
+  if (d.adopt) {
+    const r = sync.meta[d.adopt];
+    if (!r) return;
+    const half = getHalf(state.date, state.half, true);
+    half.doctor = remoteName(d.adopt, r); half.sentan = !!r.sentan; delete half.syncPending;
+    saveNow(); render(); toast('アシスト先をそろえました');
+    return;
+  }
+  if (d.preset !== undefined) {
+    const time = t.closest('.slot').dataset.time;
+    const s = getSlot(state.date, state.half, time, true);
+    const cur = (s.treatment || '').trim();
+    if (!cur) s.treatment = d.preset;
+    else if (!cur.split(/[・、,\s]+/).includes(d.preset)) s.treatment = cur + '・' + d.preset;
+    t.closest('.slot').querySelector('[data-sf="treatment"]').value = s.treatment;
+    save(); refreshSlotHead(time); return;
+  }
+  if (d.unit !== undefined) {
+    const slot = t.closest('.slot'), time = slot.dataset.time;
+    const s = getSlot(state.date, state.half, time, true);
+    s.unit = s.unit === d.unit ? '' : d.unit;
+    slot.querySelectorAll('[data-unit]').forEach(b => b.classList.toggle('on', b.dataset.unit === s.unit));
+    save(); refreshSlotHead(time); return;
+  }
+  if (d.clear) {
+    const cs = getSlot(state.date, state.half, d.clear);
+    if (!confirm(`${showTime(d.clear)} の枠を${cs && cs.extra ? '削除' : '空に'}しますか？`)) return;
+    const half = getHalf(state.date, state.half);
+    if (half) delete half.slots[d.clear];
+    saveNow(); return render();
+  }
+  if (d.go) {
+    const [date, half, time] = d.go.split('|'), dt = parseYmd(date);
+    return go('half', {date, half, open:time || null, y:dt.getFullYear(), m:dt.getMonth()});
+  }
+  if (d.closedwd !== undefined) {
+    const w = Number(d.closedwd), list = db.settings.closedWd;
+    db.settings.closedWd = list.includes(w) ? list.filter(x => x !== w) : [...list, w];
+    saveNow(); return render();
+  }
+  if (d.step) { db.settings.step = Number(d.step); saveNow(); return render(); }
+  if (d.padd) {
+    const inp = document.getElementById('padd-' + d.padd), label = inp.value.trim();
+    if (!label) return inp.focus();
+    presetList(d.padd).push({id:uid(), label}); saveNow(); render();
+    document.getElementById('padd-' + d.padd).focus(); return;
+  }
+  if (d.pdel) {
+    const [lid, pid] = d.pdel.split('|'), list = presetList(lid);
+    const i = list.findIndex(p => p.id === pid);
+    if (i >= 0 && confirm(`「${list[i].label}」ボタンを削除しますか？`)) { list.splice(i, 1); saveNow(); render(); }
+    return;
+  }
+  if (d.pup) {
+    const [lid, pid] = d.pup.split('|'), list = presetList(lid);
+    const i = list.findIndex(p => p.id === pid);
+    if (i > 0) { [list[i - 1], list[i]] = [list[i], list[i - 1]]; saveNow(); render(); }
+    return;
+  }
+  if (d.dorder) {
+    const doc = db.doctors.find(x => x.id === d.dorder);
+    if (!doc) return;
+    doc.order = doc.order === false;
+    if (db.sync.group) pushDoctor(doc);
+    saveNow(); render(); toast(`${doc.name} 先生：先端オーダー${doc.order ? 'あり' : 'なし'}`);
+    return;
+  }
+  if (d.dopen) { state.openDoc = state.openDoc === d.dopen ? null : d.dopen; return render(); }
+  if (d.ddel) {
+    const doc = db.doctors.find(x => x.id === d.ddel);
+    if (doc && confirm(`${doc.name || '（無名）'} 先生を削除しますか？\n（入力済みのアシスト先名は残ります）`)) {
+      if (db.sync.group && doc.shared) { doc.deleted = true; pushDoctor(doc); }   // 共有中は全員のリストから消す
+      else db.doctors = db.doctors.filter(x => x !== doc);
+      saveNow(); render();
+    }
+    return;
+  }
+
+  switch (d.act) {
+    case 'prev': state.m--; if (state.m < 0) { state.m = 11; state.y--; } return render();
+    case 'next': state.m++; if (state.m > 11) { state.m = 0; state.y++; } return render();
+    case 'today': { const n = new Date(); state.y = n.getFullYear(); state.m = n.getMonth(); return render(); }
+    case 'search': return go('search');
+    case 'settings': return go('settings');
+    case 'back': return go('cal');
+    case 'prevday': case 'nextday': {
+      const dt = parseYmd(state.date);
+      dt.setDate(dt.getDate() + (d.act === 'nextday' ? 1 : -1));
+      return go('half', {date:ymd(dt), open:null, y:dt.getFullYear(), m:dt.getMonth()});
+    }
+    case 'sentan': {
+      const half = getHalf(state.date, state.half, true);
+      half.sentan = !half.sentan; pushCheck(state.date, state.half); return render();
+    }
+    case 'addslot': {
+      const v = document.getElementById('addTime').value;
+      if (!/^\d{2}:\d{2}$/.test(v)) return toast('時刻を選んでください');
+      const half = getHalf(state.date, state.half, true);
+      // 30分枠や既存の枠と重なる時刻なら "09:00~2" のように2人目として追加
+      const taken = new Set([...times(state.date, state.half), ...Object.keys(half.slots)]);
+      let key = v, n = 2;
+      while (taken.has(key)) key = `${v}~${n++}`;
+      getSlot(state.date, state.half, key, true).extra = true;
+      state.open = key; saveNow(); render();
+      const el = app.querySelector(`.slot[data-time="${key}"]`);
+      if (el) el.scrollIntoView({block:'start', behavior:'smooth'});
+      return;
+    }
+    case 'history': return showHistory();
+    case 'dochistory': return showDocHistory();
+    case 'closedHoliday': db.settings.closedHoliday = !db.settings.closedHoliday; saveNow(); return render();
+    case 'regdoc': {
+      const half = getHalf(state.date, state.half);
+      if (!half || !half.doctor.trim() || findDoctor(half.doctor)) return;
+      const doc = {id:uid(), name:half.doctor.trim(), presets:[]};
+      db.doctors.push(doc);
+      if (db.sync.group) pushDoctor(doc);
+      saveNow(); render(); toast('先生リストに追加しました');
+      return;
+    }
+    case 'weekly': {
+      const {y, m} = state, last = new Date(y, m + 1, 0).getDate();
+      if (!Object.values(db.weekly).some(v => v && v.trim())) { toast('設定で「週の診療プリセット」を登録してください'); return; }
+      if (!confirm(`${m + 1}月に週の診療プリセットを反映します。\n（アシスト先が空欄の枠だけに入ります。休診日は除きます）`)) return;
+      let n = 0;
+      for (let dd = 1; dd <= last; dd++) {
+        const dt = new Date(y, m, dd), ds = ymd(dt);
+        if (!isClinicDay(ds)) continue;
+        for (const h of ['am', 'pm']) {
+          const name = (db.weekly[dt.getDay() + h] || '').trim();
+          if (!name) continue;
+          const cur = getHalf(ds, h);
+          if (cur && cur.doctor) continue;
+          getHalf(ds, h, true).doctor = name; n++;
+        }
+      }
+      saveNow(); render(); toast(`${n}枠に反映しました`);
+      return;
+    }
+    case 'syncCreate': {
+      const config = parseFirebaseConfig(document.getElementById('fbConfig').value);
+      if (!config) return toast('firebaseConfig を読み取れませんでした');
+      const rnd = crypto.getRandomValues(new Uint8Array(16));
+      db.sync.config = config;
+      db.sync.group = Array.from(rnd, b => b.toString(36).padStart(2, '0')).join('');
+      saveNow(); startSync(); render(); toast('共有を作りました。参加コードを送ってください');
+      return;
+    }
+    case 'syncJoin': {
+      const j = decodeJoinCode(document.getElementById('joinCode').value);
+      if (!j) return toast('参加コードが正しくありません');
+      db.sync.config = j.c; db.sync.group = j.g;
+      saveNow(); startSync(); render(); toast('共有に参加しました');
+      return;
+    }
+    case 'syncShare': {
+      const code = encodeJoinCode();
+      if (navigator.share) navigator.share({text:code}).catch(() => {});
+      else navigator.clipboard.writeText(code).then(() => toast('コピーしました'), () => prompt('参加コード', code));
+      return;
+    }
+    case 'syncLeave':
+      if (!confirm('共有をやめますか？（このiPhoneの記録は残ります）')) return;
+      stopSync(); delete db.sync.config; delete db.sync.group;
+      db.doctors = db.doctors.filter(x => !x.deleted);
+      db.doctors.forEach(x => { delete x.shared; delete x.pending; });
+      for (const day of Object.values(db.days)) for (const h of ['am', 'pm']) if (day[h]) delete day[h].syncPending;
+      saveNow(); render();
+      return;
+    case 'dadd': {
+      const inp = document.getElementById('dadd'), name = inp.value.trim();
+      if (!name) return inp.focus();
+      if (findDoctor(name)) { toast('同じ名前の先生がいます'); return; }
+      const doc = {id:uid(), name, presets:[]};
+      db.doctors.push(doc); state.openDoc = doc.id;
+      if (db.sync.group) pushDoctor(doc);
+      saveNow(); return render();
+    }
+    case 'export': return exportData();
+    case 'import': return document.getElementById('importFile').click();
+    case 'wipe':
+      if (confirm('すべてのデータ（予定・先生・ボタン）を削除します。元に戻せません。よろしいですか？') &&
+          confirm('本当に削除しますか？')) {
+        stopSync(); db = migrate(null); saveNow(); render(); toast('削除しました');
+      }
+      return;
+  }
+});
+
+app.addEventListener('input', e => {
+  const t = e.target, d = t.dataset;
+  if (d.sf) {
+    const time = t.closest('.slot').dataset.time;
+    getSlot(state.date, state.half, time, true)[d.sf] = t.value;
+    save(); refreshSlotHead(time);
+  } else if (d.hf) {
+    getHalf(state.date, state.half, true)[d.hf] = t.value; save();
+  } else if (d.pl) {
+    const [lid, pid] = d.pl.split('|'), p = presetList(lid).find(x => x.id === pid);
+    if (p) { p.label = t.value; save(); }
+  } else if (d.syncname !== undefined) {
+    db.sync.name = t.value.trim(); save();
+  } else if (d.lead !== undefined) {
+    const n = Math.round(Number(t.value));
+    if (n >= 1 && n <= 10) { db.settings.orderLead = n; save(); }
+  } else if (d.otime !== undefined) {
+    if (/^\d{2}:\d{2}$/.test(t.value)) { db.settings.orderTime = t.value; save(); }
+  } else if (d.wk) {
+    db.weekly[d.wk] = t.value; save();
+  } else if (t.id === 'q') {
+    state.q = t.value;
+    document.getElementById('results').innerHTML = searchResults(state.q);
+  }
+});
+
+app.addEventListener('change', e => {
+  const t = e.target, d = t.dataset;
+  if (d.hf === 'doctor') {           // 先生ごとのボタン・共有の状態を反映
+    doctorChanged(state.date, state.half, state.docBefore || '');
+    state.docBefore = t.value; saveNow(); render();
+  }
+  else if (d.pl) {
+    const [lid, pid] = d.pl.split('|'), list = presetList(lid), p = list.find(x => x.id === pid);
+    if (p && !p.label.trim()) list.splice(list.indexOf(p), 1);
+    else if (p) p.label = p.label.trim();
+    saveNow(); render();
+  } else if (d.dn) {
+    const doc = db.doctors.find(x => x.id === d.dn), name = t.value.trim();
+    if (!doc || name === doc.name) return;
+    if (!name) { toast('名前は空にできません（消すときは削除ボタン）'); t.value = doc.name; return; }
+    const dup = findDoctor(name);
+    if (dup && dup !== doc) { toast('同じ名前の先生がいます'); t.value = doc.name; return; }
+    renameHalves(doc.name, name);   // 入力済みのアシスト先名・週プリセットも合わせて変更
+    doc.name = name;
+    if (db.sync.group) pushDoctor(doc);
+    saveNow(); render();
+  } else if (d.lead !== undefined || d.otime !== undefined) {
+    saveNow(); render();   // 締切の例を更新
+  } else if (t.id === 'importFile' && t.files[0]) {
+    importData(t.files[0]);
+  }
+});
+
+app.addEventListener('focusin', e => { if (e.target.dataset.hf === 'doctor') state.docBefore = e.target.value; });
+
+app.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || e.isComposing) return;
+  if (e.target.id === 'dadd') app.querySelector('[data-act="dadd"]').click();
+  else if (e.target.id && e.target.id.startsWith('padd-')) app.querySelector(`[data-padd="${e.target.id.slice(5)}"]`).click();
+  else if (e.target.tagName === 'INPUT') e.target.blur();
+});
+
+// 月表示は左右スワイプでも切替
+let sx = null, sy = 0;
+app.addEventListener('touchstart', e => {
+  if (state.view !== 'cal') return;
+  sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+}, {passive:true});
+app.addEventListener('touchend', e => {
+  if (state.view !== 'cal' || sx === null) return;
+  const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+  sx = null;
+  if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) app.querySelector(`[data-act="${dx < 0 ? 'next' : 'prev'}"]`).click();
+}, {passive:true});
+
+// ---------- 先端オーダーの共有（Firebase Firestore） ----------
+// 送るのは 日付・午前午後・先生名・済/未・記録者名 だけ。患者情報は送らない。
+const FB_SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
+const sync = {status:'off', err:'', online:null, fs:null, store:null, unsub:null, docUnsub:null, month:null, meta:{}, inflight:new Set()};
+// 共有済みの先生はIDで、リストにない名前は正規化した名前で照合する
+function checkId(date, h, doctor) {
+  const d = findDoctor(doctor);
+  return `${date}_${h}_${d && d.shared ? 'd-' + d.id : 'n-' + encodeURIComponent(normDoc(doctor))}`;
+}
+function remoteName(id, r) {
+  const key = id.split('_').slice(2).join('_');
+  const d = key.startsWith('d-') && liveDoctors().find(x => x.id === key.slice(2));
+  return d ? d.name : r.doctor;
+}
+function softRender() {   // 入力中は画面を作り直さない
+  const a = document.activeElement;
+  if (a && app.contains(a) && /^(INPUT|TEXTAREA)$/.test(a.tagName)) refreshSyncUi();
+  else render();
+}
+const fmtAt = at => { const d = at.toDate ? at.toDate() : new Date(at); return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${pad(d.getMinutes())}`; };
+
+function syncLabel() {
+  if (!db.sync.group) return '未設定';
+  const pending = Object.values(db.days).some(day => (day.am && day.am.syncPending) || (day.pm && day.pm.syncPending));
+  if (sync.status === 'connecting' || (sync.status === 'on' && sync.online === null)) return '共有：接続中…';
+  if (sync.status === 'on' && sync.online) return pending ? '共有：送信中…' : '共有：オンライン';
+  if (sync.status === 'error') return '共有：エラー（' + sync.err + '）';
+  return '共有：オフライン' + (pending ? '（電波が戻ると送信）' : '');
+}
+function refreshSyncUi() {
+  app.querySelectorAll('.syncstat').forEach(el => el.textContent = syncLabel());
+  if (state.view === 'half') {
+    const box = document.getElementById('sentanBox');
+    if (box) box.innerHTML = sentanHtml(getHalf(state.date, state.half) || {doctor:'', sentan:false}, state.date, state.half);
+  }
+}
+
+async function startSync() {
+  stopSync();
+  const {config, group} = db.sync;
+  if (!config || !group) return;
+  sync.status = 'connecting'; refreshSyncUi();
+  try {
+    const base = config.sdkBase || FB_SDK;
+    const [fbApp, fs] = await Promise.all([import(base + 'firebase-app.js'), import(base + 'firebase-firestore.js')]);
+    for (const a of fbApp.getApps()) await fbApp.deleteApp(a);
+    const {sdkBase, emulator, ...cfg} = config;
+    sync.fs = fs;
+    sync.store = fs.getFirestore(fbApp.initializeApp(cfg));
+    if (emulator) fs.connectFirestoreEmulator(sync.store, ...emulator.split(':').map((v, i) => i ? Number(v) : v));
+    sync.status = 'on'; sync.err = '';
+    watchDoctors(); watchMonth(); flushPending();
+  } catch (e) {
+    sync.status = 'error'; sync.err = navigator.onLine ? '接続できません' : 'オフライン';
+  }
+  refreshSyncUi();
+}
+function stopSync() {
+  if (sync.unsub) sync.unsub();
+  if (sync.docUnsub) sync.docUnsub();
+  Object.assign(sync, {status:'off', online:null, unsub:null, docUnsub:null, month:null, store:null, meta:{}, inflight:new Set()});
+}
+
+// ---- 先生リストの共有 ----
+function watchDoctors() {
+  const {collection, onSnapshot} = sync.fs;
+  sync.docUnsub = onSnapshot(collection(sync.store, 'groups', db.sync.group, 'doctors'), {includeMetadataChanges:true}, snap => {
+    const remote = {};
+    snap.forEach(x => { remote[x.id] = x.data(); });
+    sync.remoteDoctors = remote;
+    mergeDoctors(remote, !snap.metadata.fromCache);
+  }, err => {
+    sync.status = 'error';
+    sync.err = err.code === 'permission-denied' ? '先生リストの権限がありません（Firebaseのルールを更新してください）' : '接続できません';
+    refreshSyncUi();
+  });
+}
+function mergeDoctors(remote, fromServer) {
+  let changed = false;
+  // 同時に同じ先生が登録されたら、IDの小さいほうにまとめる
+  const winner = {};
+  for (const id of Object.keys(remote).sort()) {
+    const r = remote[id];
+    if (r.deleted || !r.name) continue;
+    const k = normDoc(r.name);
+    if (!winner[k]) { winner[k] = id; continue; }
+    const loser = db.doctors.find(x => x.id === id), win = db.doctors.find(x => x.id === winner[k]);
+    if (loser && win) {
+      win.presets.push(...loser.presets.filter(p => !win.presets.some(q => q.label === p.label)));
+      db.doctors = db.doctors.filter(x => x !== loser);
+    } else if (loser) loser.id = winner[k];
+    r.deleted = true; changed = true;
+    if (fromServer) pushDoctor({id, name:r.name, deleted:true}, false);
+  }
+  for (const [id, r] of Object.entries(remote)) {
+    let local = db.doctors.find(x => x.id === id);
+    if (r.deleted || !r.name) {
+      if (local && !local.pending) { db.doctors = db.doctors.filter(x => x !== local); changed = true; }
+      continue;
+    }
+    if (!local) {
+      // 自分だけが登録していた同じ先生は、共有のIDに付け替える（ボタンは引き継ぐ）
+      const twin = db.doctors.find(x => !x.shared && !x.deleted && !remote[x.id] && normDoc(x.name) === normDoc(r.name));
+      if (twin) { twin.id = id; delete twin.pending; local = twin; }
+      else { local = {id, name:r.name, presets:[], order:r.order !== false}; db.doctors.push(local); }
+      changed = true;
+    }
+    if (!local.shared) { local.shared = true; changed = true; }
+    if (!local.pending && local.name !== r.name) { renameHalves(local.name, r.name); local.name = r.name; changed = true; }
+    if (!local.pending && (local.order !== false) !== (r.order !== false)) { local.order = r.order !== false; changed = true; }
+  }
+  // サーバーの最新が届いてから、自分だけの先生・未送信の変更を送る
+  if (fromServer) for (const x of db.doctors) if (x.pending || !remote[x.id]) pushDoctor(x);
+  if (changed) { saveNow(); softRender(); }
+}
+function pushDoctor(d, log = true) {
+  d.pending = true; saveNow();
+  if (!sync.store || sync.inflight.has(d.id)) return;
+  const id = d.id, name = d.name, del = !!d.deleted, order = d.order !== false;
+  sync.inflight.add(id);
+  writeDoctor(id, name, del, order, log)
+    .then(() => {
+      const cur = db.doctors.find(x => x.id === id);
+      if (cur && cur.name === name && !!cur.deleted === del && (cur.order !== false) === order) {
+        delete cur.pending; cur.shared = true;
+        if (del) db.doctors = db.doctors.filter(x => x !== cur);
+        saveNow();
+      }
+    })
+    .catch(() => {})
+    .finally(() => sync.inflight.delete(id));
+}
+
+// ---- 書き込みと変更履歴 ----
+// 本体の更新と履歴（追加のみ・消せない）を1回の書き込みでまとめて送る
+const groupRef = (...path) => sync.fs.doc(sync.store, 'groups', db.sync.group, ...path);
+const logRef = () => sync.fs.doc(sync.fs.collection(sync.store, 'groups', db.sync.group, 'logs'));
+const byName = () => (db.sync.name || '').slice(0, 30);
+const tsOf = at => at ? (at.toMillis ? at.toMillis() : +new Date(at)) : 0;
+function writeCheck(id, date, h, doctor, sentan) {
+  const {writeBatch, serverTimestamp} = sync.fs, at = serverTimestamp(), by = byName(), b = writeBatch(sync.store);
+  b.set(groupRef('checks', id), {date, half:h, doctor, sentan, by, at});
+  b.set(logRef(), {type:'check', key:id, date, half:h, doctor, sentan, by, at});
+  return b.commit();
+}
+function writeDoctor(id, name, deleted, order, log) {
+  const {writeBatch, serverTimestamp} = sync.fs, at = serverTimestamp(), b = writeBatch(sync.store);
+  b.set(groupRef('doctors', id), {name:name.slice(0, 50), deleted, order, at});
+  if (log) b.set(logRef(), {type:'doctor', doctorId:id, name:name.slice(0, 50), deleted, order, by:byName(), at});
+  return b.commit();
+}
+async function loadLogs(filters) {
+  const {collection, query, where, getDocs} = sync.fs;
+  const q = query(collection(sync.store, 'groups', db.sync.group, 'logs'), ...filters.map(([f, v]) => where(f, '==', v)));
+  const snap = await getDocs(q);
+  return snap.docs.map(x => x.data({serverTimestamps:'estimate'})).sort((a, b) => tsOf(b.at) - tsOf(a.at));
+}
+const logErr = e => `<div class="note">履歴を読めませんでした（${e && e.code === 'permission-denied' ? 'Firebaseのルールを更新してください' : '通信できません'}）</div>`;
+
+async function showHistory() {
+  const box = document.getElementById('histBox');
+  if (!box) return;
+  if (!sync.store) { box.innerHTML = '<div class="note">オフラインのため履歴を読めません</div>'; return; }
+  box.innerHTML = '<div class="note">読み込み中…</div>';
+  try {
+    const logs = await loadLogs([['date', state.date], ['half', state.half]]);
+    sync.hist = logs;
+    box.innerHTML = logs.length ? logs.map((l, i) => `<div class="orow"><span>${l.at ? fmtAt(l.at) : ''} ${esc(l.by || 'だれか')}：${esc(l.doctor)} を${l.sentan ? '済' : '未'}に</span>
+      ${i ? `<button class="sb" data-restore="${i}">この状態に戻す</button>` : '<span class="note" style="margin:0">最新</span>'}</div>`).join('')
+      : '<div class="note">この枠の履歴はまだありません</div>';
+  } catch (e) { box.innerHTML = logErr(e); }
+}
+async function showDocHistory() {
+  const box = document.getElementById('docHistBox');
+  if (!box) return;
+  if (!sync.store) { box.innerHTML = '<div class="note">オフラインのため履歴を読めません</div>'; return; }
+  box.innerHTML = '<div class="note">読み込み中…</div>';
+  const deleted = Object.entries(sync.remoteDoctors || {}).filter(([, r]) => r.deleted && r.name && !findDoctor(r.name));
+  let html = deleted.length ? '<label class="lab">削除した先生</label>' + deleted.map(([id, r]) =>
+    `<div class="orow"><span>${esc(r.name)}</span><button class="sb" data-undel="${esc(id)}">元に戻す</button></div>`).join('') : '';
+  try {
+    const logs = (await loadLogs([['type', 'doctor']])).slice(0, 50);
+    sync.docHist = logs;
+    html += '<label class="lab">変更履歴（新しい順・50件まで）</label>' + (logs.length ? logs.map((l, i) =>
+      `<div class="orow"><span>${l.at ? fmtAt(l.at) : ''} ${esc(l.by || 'だれか')}：${esc(l.name)} を${l.deleted ? '削除' : '登録・変更'}${!l.deleted && l.order === false ? '（先端なし）' : ''}</span>
+       <button class="sb" data-restoredoc="${i}">この状態に戻す</button></div>`).join('') : '<div class="note">履歴はまだありません</div>');
+    box.innerHTML = html;
+  } catch (e) { box.innerHTML = html + logErr(e); }
+}
+function restoreCheck(l) {
+  const half = getHalf(l.date, l.half);
+  if (half && half.doctor && checkId(l.date, l.half, half.doctor) === l.key) {
+    half.sentan = !!l.sentan; pushCheck(l.date, l.half);
+  } else {
+    writeCheck(l.key, l.date, l.half, l.doctor, !!l.sentan).catch(() => toast('戻せませんでした'));
+  }
+  render(); toast('戻しました');
+}
+function restoreDoctor(id, name, deleted, order) {
+  const dup = findDoctor(name);
+  if (!deleted && dup && dup.id !== id) return toast('同じ名前の先生がすでにいます');
+  let local = db.doctors.find(x => x.id === id);
+  if (!local) { local = {id, name, presets:[]}; db.doctors.push(local); }
+  if (local.name !== name) { renameHalves(local.name, name); local.name = name; }
+  local.deleted = deleted; local.order = order;
+  pushDoctor(local); render(); toast('先生リストを戻しました');
+}
+
+// アシスト先を変えたとき：新しい先生の共有状態に合わせる（前の先生の「済」を持ち込まない）
+function doctorChanged(date, h, prev) {
+  const half = getHalf(date, h, true);
+  if (normDoc(prev) === normDoc(half.doctor)) return;
+  delete half.syncPending;
+  if (!db.sync.group || !half.doctor) return;
+  const r = sync.meta[checkId(date, h, half.doctor)];
+  if (r) { half.sentan = !!r.sentan; return; }
+  if (half.sentan) {
+    if (confirm(`先端オーダーが「済」になっています。\n${half.doctor} の枠としても「済」で共有しますか？\n（キャンセルで「未」に戻します）`)) pushCheck(date, h);
+    else half.sentan = false;
+  }
+}
+
+// 表示中の月の前後1か月ぶんを購読
+function watchMonth() {
+  if (!sync.store) return;
+  const key = `${state.y}-${state.m}`;
+  if (sync.month === key) return;
+  if (sync.unsub) sync.unsub();
+  sync.month = key;
+  const {collection, query, where, onSnapshot} = sync.fs;
+  const from = ymd(new Date(state.y, state.m - 1, 1)), to = ymd(new Date(state.y, state.m + 2, 0));
+  const q = query(collection(sync.store, 'groups', db.sync.group, 'checks'), where('date', '>=', from), where('date', '<=', to));
+  sync.unsub = onSnapshot(q, {includeMetadataChanges:true}, snap => {
+    sync.online = !snap.metadata.fromCache;
+    let changed = false;
+    for (const ch of snap.docChanges()) {
+      if (ch.type === 'removed') { delete sync.meta[ch.doc.id]; continue; }
+      sync.meta[ch.doc.id] = ch.doc.data({serverTimestamps:'estimate'});
+      if (applyRemote(ch.doc.id, sync.meta[ch.doc.id])) changed = true;
+    }
+    if (changed) { saveNow(); if (state.view === 'cal') render(); }
+    refreshSyncUi();
+  }, err => {
+    sync.status = 'error'; sync.err = err.code === 'permission-denied' ? '権限がありません（ルール設定を確認）' : '接続できません';
+    refreshSyncUi();
+  });
+}
+
+// 共有の状態を自分の枠に反映（同じ日・枠・先生名で、未送信の変更がないときだけ）
+function applyRemote(id, r) {
+  if (!r || !r.date || !r.half) return false;
+  const half = getHalf(r.date, r.half);
+  if (!half || half.syncPending || !half.doctor || checkId(r.date, r.half, half.doctor) !== id) return false;
+  if (half.sentan === !!r.sentan) return false;
+  half.sentan = !!r.sentan;
+  return true;
+}
+function applyRemoteAll() {
+  let changed = false;
+  for (const [id, r] of Object.entries(sync.meta)) if (applyRemote(id, r)) changed = true;
+  if (changed) saveNow();
+}
+
+function pushCheck(date, h) {
+  const half = getHalf(date, h, true);
+  if (!db.sync.group || !half.doctor) { delete half.syncPending; saveNow(); return; }
+  half.syncPending = true; saveNow();
+  if (!sync.store) return;
+  const sent = half.sentan, doctor = half.doctor.trim();
+  writeCheck(checkId(date, h, doctor), date, h, doctor, sent)
+    .then(() => {
+      const cur = getHalf(date, h);
+      if (cur && cur.sentan === sent && normDoc(cur.doctor) === normDoc(doctor)) { delete cur.syncPending; saveNow(); }
+      refreshSyncUi();
+    })
+    .catch(err => { toast(err.code === 'permission-denied' ? '共有できませんでした（権限）' : '共有できませんでした'); });
+}
+function flushPending() {
+  for (const [date, day] of Object.entries(db.days)) for (const h of ['am', 'pm']) if (day[h] && day[h].syncPending) pushCheck(date, h);
+}
+
+function parseFirebaseConfig(text) {
+  const cfg = {};
+  for (const m of String(text).matchAll(/["']?(\w+)["']?\s*:\s*["']([^"']+)["']/g)) cfg[m[1]] = m[2];
+  return cfg.apiKey && cfg.projectId && cfg.appId ? cfg : null;
+}
+function encodeJoinCode() {
+  const json = JSON.stringify({c:db.sync.config, g:db.sync.group});
+  return 'SHINRYO1:' + btoa(String.fromCharCode(...new TextEncoder().encode(json)));
+}
+function decodeJoinCode(text) {
+  try {
+    const b64 = String(text).replace(/\s/g, '').replace(/^SHINRYO1:/, '');
+    const j = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b64), c => c.charCodeAt(0))));
+    return j && j.c && j.c.apiKey && j.c.projectId && typeof j.g === 'string' && j.g.length >= 16 ? j : null;
+  } catch (e) { return null; }
+}
+const needRestart = () => db.sync.group && !['on', 'connecting'].includes(sync.status);
+addEventListener('online', () => { if (needRestart()) startSync(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && needRestart()) startSync(); });
+
+// ---------- バックアップ ----------
+async function exportData() {
+  saveNow();
+  const name = `診療予習帳_${ymd(new Date())}.json`;
+  const file = new File([JSON.stringify(db, null, 1)], name, {type:'application/json'});
+  const done = () => { db.settings.lastBackup = new Date().toLocaleString('ja-JP'); db.settings.lastBackupAt = Date.now(); saveNow(); render(); };
+  if (navigator.canShare && navigator.canShare({files:[file]})) {
+    try { await navigator.share({files:[file], title:name}); return done(); }
+    catch (e) { if (e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(file); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  done();
+}
+async function importData(file) {
+  try {
+    const obj = JSON.parse(await file.text());
+    if (!obj || typeof obj.days !== 'object') throw new Error('format');
+    if (!confirm('今のデータを、このファイルの内容で置き換えます。よろしいですか？')) return;
+    db = migrate(obj); saveNow(); startSync(); render(); toast('読み込みました');
+  } catch (e) {
+    toast('読み込めませんでした（形式が違います）');
+  }
+}
+
+render();
+startSync();
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  // 新しい版が入ったら知らせる（初回インストール時は出さない）
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (hadController) document.getElementById('updateBar').hidden = false;
+  });
+  document.getElementById('updateBar').addEventListener('click', () => { saveNow(); location.reload(); });
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
+  }).catch(() => {});
+}
+</script>
+</body>
+</html>
